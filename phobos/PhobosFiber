@@ -1,0 +1,125 @@
+import std.stdio;
+import core.thread;
+import core.cpuid;
+import std.random;
+import std.conv;
+import std.socket;
+import std.algorithm;
+
+class DerivedFiber : Fiber
+{
+    this(real[] T, int i, int q)
+    {
+        this.T = T;
+        this.i = i;
+        this.q = q;
+        super(&run);
+    }
+    public real getResult()
+    {
+        return sum;
+    }
+private:
+    int i, q;
+    real[] T;
+    real sum = 0;
+    void run()
+    {
+        while (true)
+        {
+            for (int j = 0; ((j < q) && (i * q + j < T.length)); j++)
+            {
+                sum = sum + (T[i * q + j]*T[i * q + j]);
+            }
+            i = i + q - 1;
+            Fiber.yield();
+        }
+    }
+}
+
+class DerivedThread : Thread
+{
+    this(real[] T, int p, int q)
+    {
+        this.threadT = T;
+        this.p = p;
+        this.q = q;
+        super(&run);
+    }
+
+    public real getResult()
+    {
+        return sum;
+    }
+
+private:
+    real[] threadT;
+    int p, q;
+    real sum = 0;
+
+    void run()
+    {
+        DerivedFiber[] derviedFibers = new DerivedFiber[](p);
+        for (int i = 0; i < p; i++)
+        {
+            derviedFibers[i] = new DerivedFiber(threadT, i, q);
+        }
+        for (int i = 0; i < threadT.length; i = i + p * q)
+        {
+            for (int j = 0; j < p; j++)
+            {
+                derviedFibers[j].call();
+            }
+        }
+        for(int i=0;i<p;i++)
+        {
+            sum = sum + derviedFibers[i].getResult();
+        }
+    }
+}
+
+void main(string[] args)
+{
+    int n, m, p, q;
+    real sum = 0;
+    auto rnd = Random(unpredictableSeed);
+    // if (args.length > 4)
+    // {
+    //     n = Integer.parse(args[1]);
+    //     m = Integer.parse(args[2]);
+    //     p = Integer.parse(args[3]);
+    //     q = Integer.parse(args[4]);
+    // }
+    // else
+    // {
+        n = 10;
+        m = 10;
+        p = 2;
+        q = 3;
+    // }
+    real[][] T = new real[][](n, m);
+
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < m; j++)
+        {
+            T[i][j] = 1;
+            // T[i][j] = uniform(0.0f, 1.0f, rnd);
+        }
+    }
+    DerivedThread[] derivedThreads = new DerivedThread[](n);
+    for (int i = 0; i < n; i++)
+    {
+        derivedThreads[i] = new DerivedThread(T[i], p, q);
+        derivedThreads[i].start();
+    }
+    for (int i = 0; i < n; i++)
+    {
+        derivedThreads[i].join();
+    }
+    for (int i = 0; i < n; i++)
+    {
+        sum = sum + derivedThreads[i].getResult();
+    }
+    writeln(sum);
+}

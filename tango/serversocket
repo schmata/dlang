@@ -1,0 +1,57 @@
+import tango.util.log.Trace;
+import tango.core.Thread;
+import tango.util.Convert;
+import tango.net.device.Socket;
+import tango.net.device.Berkeley;
+import tango.net.device.Datagram;
+import tango.net.device.Multicast;
+import tango.net.device.SSLSocket;
+import tango.net.InternetAddress;
+import tango.io.Stdout;
+import tango.io.Console;
+
+class DerivedThread : Thread
+{
+    this()
+    {
+        super(&run);
+    }
+
+private:
+    void run()
+    {
+        auto server = new ServerSocket(2525);
+        char[1024] buffer;
+        // server.input.read(buffer);
+        // Cout(buffer).newline;
+        auto request = server.accept;
+        request.output.write("server replies 'hello'");
+        while (true)
+        {
+            char[1024] echoInput;
+            auto len = request.input.read(echoInput);
+            request.output.write(echoInput[0 .. len]);
+        }
+    }
+}
+
+void main(char[][] args)
+{
+    auto serverThread = new DerivedThread();
+    serverThread.start();
+
+    auto client = new Socket;
+    client.connect(new InternetAddress("localhost",2525));
+    char[1024] response;
+    auto len = client.input.read(response);
+    Cout(response[0 .. len]).newline;
+    char[] str;
+    while (true)
+    {
+        str = Cin.get();
+        client.output.write(str);
+        char[1024] ans;
+        auto lng = client.input.read(ans);
+        Cout(ans[0 .. lng]).newline;
+    }
+}

@@ -1,0 +1,70 @@
+import std.stdio;
+import core.thread;
+import core.cpuid;
+import std.random;
+import std.conv;
+import std.socket;
+import std.algorithm;
+
+class MyServerThread : Thread
+{
+    this()
+    {
+        super(&run);
+    }
+
+private:
+    void run()
+    {
+        auto server = new Socket(AddressFamily.INET, SocketType.STREAM);
+        server.bind(new InternetAddress("localhost", 2525));
+        server.listen(10);
+        auto readSet = new SocketSet();
+        Socket[] connectedClients;
+        char[1024] buffer;
+        bool isRunning = true;
+        while (isRunning)
+        {
+            // readSet.reset();
+            readSet.add(server);
+            foreach (client; connectedClients)
+                readSet.add(client);
+            if (int i = Socket.select(readSet, null, null))
+            {
+                foreach (client; connectedClients)
+                    if (readSet.isSet(client))
+                    {
+                        // read from it and echo it back
+                        auto got = client.receive(buffer);
+                        client.send(buffer[0 .. got]);
+                    }
+                if (readSet.isSet(server))
+                {
+                    // the server is ready to read, that means
+                    // a new client wants to connect. We accept it here.
+                    auto newSocket = server.accept();
+                    newSocket.send(to!string(server.localAddress)); // say hello
+                    connectedClients ~= newSocket; // add to our list
+                }
+            }
+        }
+    }
+}
+
+void main(string[] args)
+{
+    MyServerThread server = new MyServerThread();
+    server.start();
+
+    // Thread.sleep(3.seconds);
+    auto socket = new Socket(AddressFamily.INET, SocketType.STREAM);
+    char[1024] buffer;
+    socket.connect(new InternetAddress("localhost", 2525));
+    auto received = socket.receive(buffer); // wait for the server to say hello
+    writeln("Server said: ", buffer[0 .. received]);
+    foreach (line; stdin.byLine)
+    {
+        socket.send(line);
+        writeln("Server said: ", buffer[0 .. socket.receive(buffer)]);
+    }
+}

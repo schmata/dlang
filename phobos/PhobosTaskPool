@@ -1,0 +1,44 @@
+import std.stdio;
+import core.thread;
+import core.cpuid;
+import std.random;
+import std.conv;
+import std.parallelism;
+import std.range;
+import std.algorithm;
+
+void main(string[] args)
+{
+    int n = 0, m = 0;
+    if (args.length > 2)
+    {
+        m = to!int(args[1]);
+        n = to!int(args[2]);
+    }
+    else
+    {
+        return;
+    }
+    real[][] T = new real[][](m, n);
+    auto rnd = Random(unpredictableSeed);
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            real a = 1.0;
+            T[i][j] = a;
+        }
+    }
+    for (int i = 0; i < m; i++)
+    {
+        writeln(T[i]);
+    }
+    TaskPool taskPool = new TaskPool(m);
+    real wynik = 0;
+    foreach (ref i; taskPool.parallel(T))
+    {
+        wynik += taskPool.reduce!"a + b"(0.0, i.map!"a * a");
+    }
+    writeln(wynik);
+    taskPool.finish();
+}

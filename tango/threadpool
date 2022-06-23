@@ -1,0 +1,60 @@
+import tango.util.log.Trace;
+import tango.core.Thread;
+import tango.core.ThreadPool;
+import tango.core.sync.Mutex;
+import tango.util.Convert;
+import tango.net.device.Socket;
+import tango.net.device.Berkeley;
+import tango.net.device.Datagram;
+import tango.net.device.Multicast;
+// import tango.net.util.c.OpenSSL;
+// import tango.net.device.SSLSocket;
+import tango.net.InternetAddress;
+import tango.io.Stdout;
+import tango.io.Console;
+
+// real fs(real[] T)
+// {
+//     Cout(to!(char[])(T[0]));
+//     return 1.0;
+// }
+
+void main(char[][] args)
+{
+    int n = 4, m = 3;
+    real[][] T = new real[][](m, n);
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            T[i][j] = 1;
+        }
+    }
+    auto pool = new ThreadPool!(real[][])(m);
+    real wynik = 0;
+    auto mtx = new Mutex();
+    void delegate(real[][]) f = (real[][] T) {
+        real sum = 0;
+        for (int i = 0; i < T.length; i++)
+        {
+            for (int j = 0; j < T[i].length; j++)
+            {
+                sum += T[i][j]*T[i][j];
+                // Cout(to!(char[])(T[i][j]));
+                // Cout("xd");
+                // Thread.sleep(1);
+            }
+            // Cout().newline;
+        }
+        // Cout(to!(char[])(sum));
+        mtx.lock();
+        wynik = sum;
+        mtx.unlock();
+        // real kw = 1.0;
+        // wynik = sum;
+        // return sum;
+    };
+    pool.assign(f, T);
+    pool.finish();
+    Cout(to!(char[])(wynik));
+}

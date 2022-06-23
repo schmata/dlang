@@ -1,0 +1,94 @@
+import std.stdio;
+import core.thread;
+import core.cpuid;
+import std.random;
+import std.conv;
+
+class DerivedThread : Thread
+{
+    private real[] T;
+    private real sum;
+    this(real[] T)
+    {
+        this.T = T;
+        super(&run);
+    }
+
+    public real getSum()
+    {
+        return sum;
+    }
+
+private:
+    void run()
+    {
+        sum = 0;
+        for (int i = 0; i < T.length; i++)
+        {
+            sum += T[i] * T[i];
+        }
+    }
+}
+
+void main(string[] args)
+{
+    int n = 0, m = 0;
+    if (args.length > 2)
+    {
+        m = to!int(args[1]);
+        n = to!int(args[2]);
+    }
+    real[][] T = new real[][](m, n);
+    auto rnd = Random(unpredictableSeed);
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            auto a = uniform(0.0f, 1.0f, rnd);
+            T[i][j] = a;
+        }
+    }
+    for (int i = 0; i < m; i++)
+    {
+        writeln(T[i]);
+    }
+    DerivedThread[] threads = new DerivedThread[](m);
+    real wynik = 0;
+    for (int i = 0; i < m; i++)
+    {
+        threads[i] = new DerivedThread(T[i]);
+        threads[i].start();
+    }
+    for (int i = 0; i < m; i++)
+    {
+        threads[i].join();
+        wynik += threads[i].getSum();
+    }
+    writefln("Wynik: %f",wynik);
+    // int[10] T;
+    // for (int i = 0; i < 10; i++)
+    // {
+    //     auto a = uniform(0, 10, rnd);
+    //     T[i] = a;
+    // }
+    // for (int i = 0; i < 10; i++)
+    // {
+    //     write(to!string(T[i]) ~ " ");
+    // }
+    // write("\n");
+    // TestClass[] tests = new TestClass[](4);
+    // for (int i = 1; i < 5; i++)
+    // {
+    //     tests[i-1] = new TestClass(i);
+    //     tests[i-1].start();
+    // }
+    // DerivedThread derived1 = new DerivedThread(0, T);
+    // DerivedThread derived2 = new DerivedThread(0, T);
+    // derived1.start();
+    // derived2.start();
+    // derived1.join();
+    // derived2.join();
+    // writeln(derived1.getSum());
+    // writeln(derived2.getSum());
+    // auto derived2 = new DerivedThread(1,T).start();
+}
